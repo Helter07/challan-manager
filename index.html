@@ -580,25 +580,27 @@ function challanPaid(cid) { return S.settlements.filter(s=>s.cid===cid).reduce((
 let appIsReady = false;
 
 function showApp(user) {
-  if (!user) return;
+  if (!user || appIsReady) return;
   uid = user.uid;
   appIsReady = true;
   document.getElementById('page-loading').style.display = 'none';
   document.getElementById('page-login').style.display   = 'none';
   document.getElementById('page-app').style.display     = 'block';
   document.getElementById('fab').style.display          = 'flex';
-  document.getElementById('greet').textContent   = '👋 ' + (user.displayName||'').split(' ')[0];
-  document.getElementById('hdate').textContent   = 'Today: ' + fmtD(today());
-  document.getElementById('um-name').textContent  = user.displayName || '';
-  document.getElementById('um-email').textContent = user.email || '';
-  const av = document.getElementById('avbtn');
-  if (user.photoURL) av.innerHTML = '<img src="'+user.photoURL+'" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
-  else av.textContent = (user.displayName||'U')[0].toUpperCase();
+  try {
+    document.getElementById('greet').textContent   = '👋 ' + (user.displayName||'').split(' ')[0];
+    document.getElementById('hdate').textContent   = 'Today: ' + fmtD(today());
+    document.getElementById('um-name').textContent  = user.displayName || '';
+    document.getElementById('um-email').textContent = user.email || '';
+    const av = document.getElementById('avbtn');
+    if (user.photoURL) av.innerHTML = '<img src="' + user.photoURL + '" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    else av.textContent = (user.displayName||'U')[0].toUpperCase();
+  } catch(e) {}
   subscribeData();
 }
 
 function showLogin() {
-  if (appIsReady) return; // never show login once app has loaded
+  if (appIsReady) return;
   uid = null;
   if (unsubDB) { unsubDB(); unsubDB = null; }
   document.getElementById('page-loading').style.display = 'none';
@@ -608,39 +610,52 @@ function showLogin() {
   document.getElementById('login-msg').textContent      = '';
 }
 
-// Check for redirect result first (in case user just came back from Google)
-auth.getRedirectResult()
-  .then(result => { if (result && result.user) showApp(result.user); })
-  .catch(() => {});
-
-// Auth state listener
+// onAuthStateChanged as primary handler
 auth.onAuthStateChanged(user => {
-  if (user) {
-    showApp(user);
-  } else {
-    if (!appIsReady) showLogin();
-  }
+  if (user) { showApp(user); }
+  else if (!appIsReady) { showLogin(); }
 });
 
 function doLogin() {
   const btn = document.querySelector('.google-btn');
   const msg = document.getElementById('login-msg');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Redirecting to Google...'; }
-  msg.style.background = '#EFF6FF';
-  msg.style.color = '#1E40AF';
-  msg.style.padding = '8px';
-  msg.style.borderRadius = '8px';
-  msg.textContent = 'Taking you to Google sign-in...';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Opening Google...'; }
+  if (msg) { msg.textContent = ''; }
+
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithRedirect(provider).catch(e => {
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Continue with Google'; }
-    msg.style.background = '#FEF2F2';
-    msg.style.color = '#B91C1C';
-    msg.textContent = 'Error: ' + e.message;
-  });
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  auth.signInWithPopup(provider)
+    .then(result => {
+      // Call showApp directly — don't wait for onAuthStateChanged
+      if (result && result.user) showApp(result.user);
+    })
+    .catch(popupErr => {
+      if (popupErr.code === 'auth/popup-blocked' ||
+          popupErr.code === 'auth/popup-closed-by-user') {
+        // Popup blocked — use redirect as fallback
+        if (msg) { msg.textContent = 'Opening full page sign-in...'; }
+        auth.signInWithRedirect(provider).catch(e => {
+          if (btn) { btn.disabled = false; btn.innerHTML = 'Continue with Google'; }
+          if (msg) msg.textContent = 'Error: ' + e.message;
+        });
+      } else {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Continue with Google'; }
+        if (msg) {
+          msg.textContent = 'Error: ' + popupErr.code;
+          msg.style.background='#FEF2F2'; msg.style.color='#B91C1C';
+          msg.style.padding='8px'; msg.style.borderRadius='8px';
+        }
+      }
+    });
 }
 
-function doLogout() { closeMenu(); appIsReady = false; auth.signOut().then(()=>showLogin()); }
+// Handle redirect result (fallback if popup was blocked)
+auth.getRedirectResult()
+  .then(result => { if (result && result.user) showApp(result.user); })
+  .catch(() => {});
+
+function doLogout() { closeMenu(); appIsReady = false; uid = null; auth.signOut().then(()=>{ appIsReady=false; showLogin(); }); }
 
 /* ══════════════════════════════
    FIRESTORE SYNC
