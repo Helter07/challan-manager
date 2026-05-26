@@ -220,8 +220,15 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
 </head>
 <body>
 
+<!-- ══ LOADING PAGE ══ -->
+<div id="page-loading">
+  <div class="spin">🧵</div>
+  <div style="font-size:20px;font-weight:700">Challan Manager</div>
+  <p>Loading...</p>
+</div>
+
 <!-- ══ LOGIN PAGE ══ -->
-<div id="page-login">
+<div id="page-login" style="display:none">
   <div class="login-card">
     <div class="login-logo">🧵</div>
     <div class="login-title">Challan Manager</div>
@@ -235,7 +242,7 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
 </div>
 
 <!-- ══ APP PAGE ══ -->
-<div id="page-app">
+<div id="page-app" style="display:none">
   <!-- Top Bar -->
   <div class="topbar">
     <div class="topbar-left">
@@ -570,55 +577,49 @@ function challanPaid(cid) { return S.settlements.filter(s=>s.cid===cid).reduce((
 /* ══════════════════════════════
    AUTH
 ══════════════════════════════ */
-// Set persistence to LOCAL so login survives page reloads
-firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+let appIsReady = false; // flag: once logged in, never flip back unless explicit sign-out
 
-// Handle redirect result when page loads after Google login
-auth.getRedirectResult().then(result => {
-  if (result && result.user) {
-    console.log('Redirect login successful:', result.user.email);
-  }
-}).catch(e => {
-  console.error('Redirect result error:', e.code, e.message);
-  if (e.code && e.code !== 'auth/no-auth-event' && e.code !== 'auth/null-user') {
-    const msg = document.getElementById('login-msg');
-    if (msg) msg.textContent = 'Error: ' + e.message;
-  }
-});
+function showApp(user) {
+  uid = user.uid;
+  appIsReady = true;
+  document.getElementById('page-loading').style.display = 'none';
+  document.getElementById('page-login').style.display   = 'none';
+  document.getElementById('page-app').style.display     = 'block';
+  document.getElementById('fab').style.display          = 'flex';
+  document.getElementById('greet').textContent   = '👋 ' + (user.displayName||'').split(' ')[0];
+  document.getElementById('hdate').textContent   = 'Today: ' + fmtD(today());
+  document.getElementById('um-name').textContent  = user.displayName || '';
+  document.getElementById('um-email').textContent = user.email || '';
+  const av = document.getElementById('avbtn');
+  if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  else av.textContent = (user.displayName||'U')[0].toUpperCase();
+  subscribeData();
+}
+
+function showLogin() {
+  uid = null;
+  appIsReady = false;
+  if (unsubDB) { unsubDB(); unsubDB = null; }
+  document.getElementById('page-loading').style.display = 'none';
+  document.getElementById('page-app').style.display     = 'none';
+  document.getElementById('fab').style.display          = 'none';
+  document.getElementById('page-login').style.display   = 'flex';
+  const btn = document.querySelector('.google-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google'; }
+  document.getElementById('login-msg').textContent = '';
+}
 
 auth.onAuthStateChanged(user => {
   if (user) {
-    uid = user.uid;
-    // Show app, hide login - force with style too for reliability
-    const loginEl = document.getElementById('page-login');
-    const appEl   = document.getElementById('page-app');
-    loginEl.classList.add('hidden');
-    loginEl.style.display = 'none';
-    appEl.classList.add('active');
-    appEl.style.display   = 'block';
-    document.getElementById('fab').style.display = 'flex';
-    // Set user info
-    document.getElementById('greet').textContent = '👋 ' + user.displayName.split(' ')[0];
-    document.getElementById('hdate').textContent = 'Today: ' + fmtD(today());
-    document.getElementById('um-name').textContent = user.displayName;
-    document.getElementById('um-email').textContent = user.email;
-    // Avatar
-    const av = document.getElementById('avbtn');
-    if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-    else av.textContent = user.displayName[0].toUpperCase();
-    // Subscribe to data
-    subscribeData();
+    showApp(user);
   } else {
-    uid = null;
-    if (unsubDB) { unsubDB(); unsubDB = null; }
-    const loginEl2 = document.getElementById('page-login');
-    const appEl2   = document.getElementById('page-app');
-    appEl2.classList.remove('active');
-    appEl2.style.display   = 'none';
-    document.getElementById('fab').style.display = 'none';
-    loginEl2.classList.remove('hidden');
-    loginEl2.style.display = 'flex';
-    document.getElementById('login-msg').textContent = '';
+    // Only show login if we haven't already loaded the app
+    // (prevents flicker after popup sign-in)
+    if (!appIsReady) {
+      showLogin();
+    }
+    // If appIsReady is true and we get null, it means actual sign-out
+    // from doLogout() — handled by doLogout directly
   }
 });
 
@@ -650,7 +651,7 @@ function doLogin() {
       }
     });
 }
-function doLogout() { closeMenu(); auth.signOut(); }
+function doLogout() { closeMenu(); auth.signOut().then(()=>showLogin()); }
 
 /* ══════════════════════════════
    FIRESTORE SYNC
