@@ -577,9 +577,10 @@ function challanPaid(cid) { return S.settlements.filter(s=>s.cid===cid).reduce((
 /* ══════════════════════════════
    AUTH
 ══════════════════════════════ */
-let appIsReady = false; // flag: once logged in, never flip back unless explicit sign-out
+let appIsReady = false;
 
 function showApp(user) {
+  if (!user) return;
   uid = user.uid;
   appIsReady = true;
   document.getElementById('page-loading').style.display = 'none';
@@ -591,67 +592,55 @@ function showApp(user) {
   document.getElementById('um-name').textContent  = user.displayName || '';
   document.getElementById('um-email').textContent = user.email || '';
   const av = document.getElementById('avbtn');
-  if (user.photoURL) av.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  if (user.photoURL) av.innerHTML = '<img src="'+user.photoURL+'" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
   else av.textContent = (user.displayName||'U')[0].toUpperCase();
   subscribeData();
 }
 
 function showLogin() {
+  if (appIsReady) return; // never show login once app has loaded
   uid = null;
-  appIsReady = false;
   if (unsubDB) { unsubDB(); unsubDB = null; }
   document.getElementById('page-loading').style.display = 'none';
   document.getElementById('page-app').style.display     = 'none';
   document.getElementById('fab').style.display          = 'none';
   document.getElementById('page-login').style.display   = 'flex';
-  const btn = document.querySelector('.google-btn');
-  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google'; }
-  document.getElementById('login-msg').textContent = '';
+  document.getElementById('login-msg').textContent      = '';
 }
 
+// Check for redirect result first (in case user just came back from Google)
+auth.getRedirectResult()
+  .then(result => { if (result && result.user) showApp(result.user); })
+  .catch(() => {});
+
+// Auth state listener
 auth.onAuthStateChanged(user => {
   if (user) {
     showApp(user);
   } else {
-    // Only show login if we haven't already loaded the app
-    // (prevents flicker after popup sign-in)
-    if (!appIsReady) {
-      showLogin();
-    }
-    // If appIsReady is true and we get null, it means actual sign-out
-    // from doLogout() — handled by doLogout directly
+    if (!appIsReady) showLogin();
   }
 });
 
 function doLogin() {
   const btn = document.querySelector('.google-btn');
   const msg = document.getElementById('login-msg');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Opening Google...';
-  msg.textContent = '';
-
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Redirecting to Google...'; }
+  msg.style.background = '#EFF6FF';
+  msg.style.color = '#1E40AF';
+  msg.style.padding = '8px';
+  msg.style.borderRadius = '8px';
+  msg.textContent = 'Taking you to Google sign-in...';
   const provider = new firebase.auth.GoogleAuthProvider();
-
-  // Use popup on HTTPS (GitHub Pages), redirect only as fallback
-  auth.signInWithPopup(provider)
-    .then(() => { btn.disabled = false; })
-    .catch(e => {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
-        // Fallback to redirect
-        msg.textContent = 'Popup blocked — redirecting...';
-        auth.signInWithRedirect(provider);
-      } else {
-        btn.disabled = false;
-        btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google';
-        msg.textContent = '❌ ' + e.code + ': ' + e.message;
-        msg.style.background = '#FEF2F2';
-        msg.style.color = '#B91C1C';
-        msg.style.padding = '8px';
-        msg.style.borderRadius = '8px';
-      }
-    });
+  auth.signInWithRedirect(provider).catch(e => {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Continue with Google'; }
+    msg.style.background = '#FEF2F2';
+    msg.style.color = '#B91C1C';
+    msg.textContent = 'Error: ' + e.message;
+  });
 }
-function doLogout() { closeMenu(); auth.signOut().then(()=>showLogin()); }
+
+function doLogout() { closeMenu(); appIsReady = false; auth.signOut().then(()=>showLogin()); }
 
 /* ══════════════════════════════
    FIRESTORE SYNC
