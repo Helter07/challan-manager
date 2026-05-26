@@ -600,10 +600,10 @@ auth.onAuthStateChanged(user => {
 });
 
 function doLogin() {
-  document.getElementById('login-msg').textContent = 'Signing in...';
+  document.getElementById('login-msg').textContent = 'Redirecting to Google...';
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e => {
-    document.getElementById('login-msg').textContent = e.code === 'auth/popup-closed-by-user' ? '' : 'Error: ' + e.message;
+  auth.signInWithRedirect(provider).catch(e => {
+    document.getElementById('login-msg').textContent = 'Error: ' + e.message;
   });
 }
 function doLogout() { closeMenu(); auth.signOut(); }
