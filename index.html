@@ -571,6 +571,16 @@ function challanPaid(cid) { return S.settlements.filter(s=>s.cid===cid).reduce((
 /* ══════════════════════════════
    AUTH
 ══════════════════════════════ */
+// Handle redirect result when page loads after Google login
+auth.getRedirectResult().then(result => {
+  // result.user will be picked up by onAuthStateChanged below
+}).catch(e => {
+  if (e.code !== 'auth/no-auth-event') {
+    const msg = document.getElementById('login-msg');
+    if (msg) msg.textContent = 'Login error: ' + e.message;
+  }
+});
+
 auth.onAuthStateChanged(user => {
   if (user) {
     uid = user.uid;
