@@ -925,7 +925,7 @@ function challanCard(c, showParty) {
   const ptags= setts.map(s=>`<span class="ptag">+${fmt(s.amount)} on ${fmtD(s.date)}</span>`).join('');
   const bmap = {P:'P',T:'T',S:'S'};
   return `<div class="ccard">
-    <div class="chead" onclick="toggleCard('${c.id}')">
+    <div class="chead" onclick="toggleCard(this)">
       <div class="cleft">
         <span class="cnum">${esc(c.num)}</span>
         <div class="cinfo">${showParty&&party?`<div class="cp">${esc(party.name)}</div>`:''}
@@ -952,7 +952,10 @@ function challanCard(c, showParty) {
     </div>
   </div>`;
 }
-function toggleCard(cid) { const el=document.getElementById('cb-'+cid); if(el) el.classList.toggle('open'); }
+function toggleCard(el) {
+  const body = el.closest('.ccard').querySelector('.cbody');
+  if (body) body.classList.toggle('open');
+}
 
 /* ══════════════════════════════
    MODALS
