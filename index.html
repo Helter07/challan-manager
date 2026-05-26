@@ -21,10 +21,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 /* ── SCREEN SYSTEM ── */
 /* Both pages fixed full-screen — prevents scroll jump & bottom nav bleed-through */
 #page-login,#page-app{position:fixed;inset:0;z-index:10}
-#page-login{background:linear-gradient(160deg,#1A2E5A,#2D4A8A);display:flex;align-items:center;justify-content:center;padding:24px;z-index:20;overflow-y:auto}
-#page-login.hidden{display:none}
+#page-login{background:linear-gradient(160deg,#1A2E5A,#2D4A8A);display:flex;align-items:center;justify-content:center;padding:24px;z-index:20;overflow-y:auto;transition:opacity .3s}
+#page-login.hidden{display:none !important;opacity:0;pointer-events:none}
 #page-app{display:none;background:#F0F2F5;overflow-y:auto;-webkit-overflow-scrolling:touch}
-#page-app.active{display:block}
+#page-app.active{display:block !important}
 .login-card{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .login-logo{font-size:52px;margin-bottom:12px}
 .login-title{font-size:22px;font-weight:700;color:#1A2E5A;margin-bottom:6px}
@@ -34,7 +34,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
 .login-msg{font-size:12px;color:#888;margin-top:12px;min-height:18px}
 
 /* ── APP SHELL ── */
-#page-app{padding-bottom:0}
 .topbar{background:#1A2E5A;color:#fff;padding:0 16px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .topbar-left{display:flex;align-items:center;gap:10px}
 #back-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:18px;display:none;align-items:center;justify-content:center}
@@ -222,7 +221,7 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
 <body>
 
 <!-- ══ LOGIN PAGE ══ -->
-<div class="page active" id="page-login">
+<div id="page-login">
   <div class="login-card">
     <div class="login-logo">🧵</div>
     <div class="login-title">Challan Manager</div>
@@ -236,7 +235,7 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
 </div>
 
 <!-- ══ APP PAGE ══ -->
-<div class="page" id="page-app">
+<div id="page-app">
   <!-- Top Bar -->
   <div class="topbar">
     <div class="topbar-left">
@@ -587,9 +586,13 @@ auth.getRedirectResult().then(result => {
 auth.onAuthStateChanged(user => {
   if (user) {
     uid = user.uid;
-    // Show app, hide login
-    document.getElementById('page-login').classList.add('hidden');
-    document.getElementById('page-app').classList.add('active');
+    // Show app, hide login - force with style too for reliability
+    const loginEl = document.getElementById('page-login');
+    const appEl   = document.getElementById('page-app');
+    loginEl.classList.add('hidden');
+    loginEl.style.display = 'none';
+    appEl.classList.add('active');
+    appEl.style.display   = 'block';
     document.getElementById('fab').style.display = 'flex';
     // Set user info
     document.getElementById('greet').textContent = '👋 ' + user.displayName.split(' ')[0];
@@ -605,9 +608,13 @@ auth.onAuthStateChanged(user => {
   } else {
     uid = null;
     if (unsubDB) { unsubDB(); unsubDB = null; }
-    document.getElementById('page-app').classList.remove('active');
+    const loginEl2 = document.getElementById('page-login');
+    const appEl2   = document.getElementById('page-app');
+    appEl2.classList.remove('active');
+    appEl2.style.display   = 'none';
     document.getElementById('fab').style.display = 'none';
-    document.getElementById('page-login').classList.remove('hidden');
+    loginEl2.classList.remove('hidden');
+    loginEl2.style.display = 'flex';
     document.getElementById('login-msg').textContent = '';
   }
 });
