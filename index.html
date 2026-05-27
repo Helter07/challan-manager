@@ -204,7 +204,7 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
 /* ── RESPONSIVE ── */
 @media(min-width:600px){
   .stats{grid-template-columns:repeat(4,1fr)}
-  .pacts{grid-template-columns:repeat(4,1fr)}
+  .pacts{grid-template-columns:repeat(5,1fr)}
   .overlay{align-items:center;padding:20px}
   .mbox{border-radius:16px;max-height:88vh}
   .mhandle{display:none}
@@ -410,6 +410,31 @@ input:focus,select:focus{border-color:#1A2E5A;box-shadow:0 0 0 3px #DBEAFE}
     <div id="ob-preview" style="display:none" class="ibox" style="margin-top:4px"></div>
   </div>
   <div class="mfoot"><button class="btn full pri" onclick="addParty()">✓ Add Party</button></div>
+</div></div>
+
+<!-- Edit Party -->
+<div class="overlay" id="mo-edit-party">
+<div class="mbox"><div class="mhandle"></div>
+  <div class="mhead">
+    <div><h3>✏️ Edit Party</h3><div style="font-size:12px;color:#888" id="ep-subtitle"></div></div>
+    <button class="xbtn" onclick="closeModal('edit-party')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="fg"><label>Party Name *</label><input id="ep-name" placeholder="e.g. Raju Garments" autocomplete="off"></div>
+    <div class="fr">
+      <div><label>Phone</label><input id="ep-phone" type="tel" placeholder="9876543210"></div>
+      <div><label>City</label><input id="ep-city" placeholder="Delhi"></div>
+    </div>
+    <div class="fg">
+      <label>Previous Outstanding Balance (Rs.)</label>
+      <input id="ep-ob" type="number" placeholder="0" inputmode="numeric">
+      <div style="font-size:11px;color:#888;margin-top:4px;line-height:1.5">Amount this party owed before tracking started in this app.</div>
+    </div>
+  </div>
+  <div class="mfoot" style="display:flex;gap:8px">
+    <button class="btn" style="flex:1;justify-content:center" onclick="closeModal('edit-party')">Cancel</button>
+    <button class="btn pri" style="flex:1;justify-content:center" onclick="saveEditParty()">✓ Save Changes</button>
+  </div>
 </div></div>
 
 <!-- New Challan -->
@@ -874,6 +899,7 @@ function renderPartyDetail(pid) {
     <div class="pacts">
       <button class="pact green" onclick="openPayFor('${pid}')">💵 Payment</button>
       <button class="pact blue"  onclick="openChallanFor('${pid}')">+ Challan</button>
+      <button class="pact blue"  onclick="openEditParty('${pid}')" style="background:#F0FFF4;color:#059669">✏️ Edit</button>
       <button class="pact purple" onclick="printStmt('${pid}')">🖨 Statement</button>
       <button class="pact red"   onclick="delParty('${pid}')">🗑 Delete</button>
     </div>
@@ -1683,8 +1709,48 @@ async function confirmImport() {
 }
 
 /* ══════════════════════════════
-   EDIT CHALLAN
+   EDIT PARTY
 ══════════════════════════════ */
+let curEditPartyId = null;
+
+function openEditParty(pid) {
+  const p = S.parties.find(x=>x.id===pid); if(!p) return;
+  curEditPartyId = pid;
+  document.getElementById('ep-name').value  = p.name  || '';
+  document.getElementById('ep-phone').value = p.phone || '';
+  document.getElementById('ep-city').value  = p.city  || '';
+  document.getElementById('ep-ob').value    = p.ob    || 0;
+  document.getElementById('ep-subtitle').textContent = p.name;
+  document.getElementById('mo-edit-party').classList.add('open');
+}
+
+function saveEditParty() {
+  const pid = curEditPartyId; if(!pid) return;
+  const p   = S.parties.find(x=>x.id===pid); if(!p) return;
+  const newName = document.getElementById('ep-name').value.trim();
+  if (!newName) { alert('Party name is required'); return; }
+
+  // Check duplicate name (excluding current party)
+  const duplicate = S.parties.find(x=>x.id!==pid && x.name.toLowerCase()===newName.toLowerCase());
+  if (duplicate) { alert('Another party with this name already exists'); return; }
+
+  const oldName = p.name;
+  p.name  = newName;
+  p.phone = document.getElementById('ep-phone').value.trim();
+  p.city  = document.getElementById('ep-city').value.trim();
+  p.ob    = +document.getElementById('ep-ob').value || 0;
+
+  // Update pname in all challans for this party
+  if (oldName !== newName) {
+    S.challans.forEach(c => { if (c.pid === pid) c.pname = newName; });
+  }
+
+  saveToCloud();
+  closeModal('edit-party');
+  renderAll();
+  renderPartyDetail(pid);
+  document.getElementById('topbar-title').textContent = newName;
+}
 let curEditChallanIdEC = null;
 let ecRowId = 0;
 
