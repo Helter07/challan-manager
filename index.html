@@ -935,7 +935,9 @@ function challanCard(c, showParty) {
     </div>
     <div class="cbody" id="cb-${c.id}">
       <table class="itable"><thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>${c.items.map(it=>`<tr><td>${esc(it.name)}</td><td>${it.qty}</td><td>${fmt(it.rate)}</td><td style="text-align:right;font-weight:700">${fmt(it.amount)}</td></tr>`).join('')}</tbody></table>
+      <tbody>${c.items.map(it=>`<tr><td>${esc(it.name)}</td><td>${it.qty}</td><td>${fmt(it.rate)}</td><td style="text-align:right;font-weight:700">${fmt(it.amount)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr style="background:#F0F4FF;font-weight:700;font-size:12px"><td style="padding:6px 8px;border-top:1.5px solid #BFDBFE;color:#555">Total</td><td style="padding:6px 8px;border-top:1.5px solid #BFDBFE;color:#1A2E5A">${c.items.reduce((s,i)=>s+i.qty,0)} pcs</td><td style="padding:6px 8px;border-top:1.5px solid #BFDBFE"></td><td style="padding:6px 8px;border-top:1.5px solid #BFDBFE;text-align:right;color:#1A2E5A;font-size:13px">${fmt(c.total)}</td></tr></tfoot>
+      </table>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:3px"><span>Paid: ${fmt(paid)} (${pct}%)</span><span>Due: ${fmt(due)}</span></div>
       <div class="pbar"><div class="pbar-fill" style="width:${pct}%"></div></div>
       ${ptags?`<div style="margin-top:6px">${ptags}</div>`:''}
